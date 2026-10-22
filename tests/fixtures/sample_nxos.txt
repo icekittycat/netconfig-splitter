@@ -1,0 +1,13 @@
+switch-nxos# show clock
+*02:45:08.742 UTC Mon Oct 19 2026
+switch-nxos# show running-config
+!Command: show running-config
+!Running configuration last done at: Mon Oct 19 02:44:00 2026
+!Time: Mon Oct 19 02:45:00 2026
+
+version 9.3(10) Bios:version
+hostname switch-nxos
+
+interface Ethernet1/1
+  description uplink
+switch-nxos#

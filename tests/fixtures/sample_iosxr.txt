@@ -1,0 +1,20 @@
+RP/0/RSP1/CPU0:router-xr#terminal length 0
+
+Mon Oct 19 02:45:08.742 UTC
+RP/0/RSP1/CPU0:router-xr#
+RP/0/RSP1/CPU0:router-xr#show running-config 
+Building configuration...
+!! IOS XR Configuration 7.3.2
+!
+hostname router-xr
+!
+interface MgmtEth0/RSP1/CPU0/0
+ ipv4 address 10.0.0.1 255.255.255.0
+!
+end
+
+RP/0/RSP1/CPU0:router-xr#show version 
+Cisco IOS XR Software, Version 7.3.2
+Copyright (c) 2021 by Cisco Systems, Inc.
+
+RP/0/RSP1/CPU0:router-xr#
