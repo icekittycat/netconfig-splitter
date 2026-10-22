@@ -12,14 +12,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "asterust"
-version = "0.1.0"
-dependencies = [
- "once_cell",
- "regex",
-]
-
-[[package]]
 name = "autocfg"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -71,7 +63,6 @@ dependencies = [
 name = "netconfig-splitter"
 version = "0.2.0"
 dependencies = [
- "asterust",
  "once_cell",
  "pyo3",
  "regex",

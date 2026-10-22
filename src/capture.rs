@@ -3,7 +3,7 @@
 
 use pyo3::prelude::*;
 
-use asterust::date::CaptureDate;
+use crate::date::CaptureDate;
 
 #[pyclass]
 pub struct PyCapture {

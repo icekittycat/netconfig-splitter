@@ -6,11 +6,10 @@ use std::collections::HashSet;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
-use asterust::clean::clean_line;
-use asterust::date::{try_parse_date, CaptureDate, ParsedDate};
-use asterust::prompt::{match_prompt, normalize_command, PromptMatch};
-
 use crate::capture::{Pending, PyCapture};
+use crate::clean::clean_line;
+use crate::date::{try_parse_date, CaptureDate, ParsedDate};
+use crate::prompt::{match_prompt, normalize_command, PromptMatch};
 
 /// Walks a capture file line by line, tracking the current device/date
 /// context and accumulating output into finished `PyCapture`s.

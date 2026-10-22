@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use pyo3::exceptions::PyIOError;
 use pyo3::prelude::*;
 
-use asterust::paths::sanitize_path_component;
+use crate::paths::sanitize_path_component;
 
 /// Write captures to disk.
 ///
