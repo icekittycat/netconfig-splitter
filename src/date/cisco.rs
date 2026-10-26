@@ -1,8 +1,10 @@
-//! Timestamp banner parsing: IOS-XR's year-less per-command banner and the
+//! Cisco timestamp formats: IOS-XR's year-less per-command banner and the
 //! year-bearing timestamp printed by "show clock" on IOS/IOS-XE/NX-OS.
 
 use once_cell::sync::Lazy;
 use regex::Regex;
+
+use super::{CaptureDate, ParsedDate};
 
 const MONTHS: [&str; 12] = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
@@ -39,63 +41,7 @@ fn month_num(name: &str) -> Option<u32> {
     MONTHS.iter().position(|m| *m == name).map(|i| (i + 1) as u32)
 }
 
-/// A calendar date in (year, month, day) form, independent of any timezone.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct CaptureDate {
-    pub year: i32,
-    pub month: u32,
-    pub day: u32,
-}
-
-impl CaptureDate {
-    pub fn to_iso(self) -> String {
-        format!("{:04}-{:02}-{:02}", self.year, self.month, self.day)
-    }
-
-    pub fn from_iso(s: &str) -> Option<Self> {
-        let parts: Vec<&str> = s.split('-').collect();
-        if parts.len() != 3 {
-            return None;
-        }
-        Some(Self {
-            year: parts[0].parse().ok()?,
-            month: parts[1].parse().ok()?,
-            day: parts[2].parse().ok()?,
-        })
-    }
-}
-
-/// The result of successfully matching a timestamp banner line.
-pub enum ParsedDate {
-    /// e.g. "show clock" output, which prints the year explicitly.
-    Explicit(CaptureDate, String),
-    /// e.g. IOS-XR's auto-printed banner, which has no year; the date here
-    /// was built from a caller-supplied best-guess year.
-    YearInferred(CaptureDate, String),
-}
-
-impl ParsedDate {
-    pub fn date(&self) -> CaptureDate {
-        match self {
-            ParsedDate::Explicit(d, _) | ParsedDate::YearInferred(d, _) => *d,
-        }
-    }
-
-    /// The exact banner text matched, with any stray leading garbage (see
-    /// `XR_DATE_RE`'s docs) already stripped off.
-    pub fn banner_text(&self) -> &str {
-        match self {
-            ParsedDate::Explicit(_, text) | ParsedDate::YearInferred(_, text) => text,
-        }
-    }
-
-    pub fn had_explicit_year(&self) -> bool {
-        matches!(self, ParsedDate::Explicit(..))
-    }
-}
-
-/// Try to parse a timestamp banner line, using `year_hint` for banners (like
-/// IOS-XR's) that don't include a year of their own.
+/// Try to parse a Cisco-style timestamp line.
 pub fn try_parse_date(line: &str, year_hint: i32) -> Option<ParsedDate> {
     let stripped = line.trim();
     if let Some(caps) = CLOCK_DATE_RE.captures(stripped) {
@@ -155,12 +101,7 @@ mod tests {
     }
 
     #[test]
-    fn iso_roundtrip() {
-        let d = CaptureDate {
-            year: 2026,
-            month: 1,
-            day: 5,
-        };
-        assert_eq!(CaptureDate::from_iso(&d.to_iso()), Some(d));
+    fn ignores_juniper_timestamp_line() {
+        assert!(try_parse_date("Current time: 2026-10-22 14:30:00 UTC", 2026).is_none());
     }
 }

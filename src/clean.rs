@@ -1,14 +1,19 @@
 //! Stripping terminal artifacts (ANSI escapes, backspace erasures, pagination
-//! prompts) out of raw capture lines.
+//! prompts) out of raw capture lines. The pagination prompt text is
+//! vendor-specific (Cisco's "--More--", JunOS's "---(more)---"), but
+//! recognizing both unconditionally is safe - there's no realistic risk of
+//! genuine config/output text accidentally matching either pattern.
 
 use once_cell::sync::Lazy;
 use regex::Regex;
 
 static MORE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\s*--\s*[Mm]ore\s*--\s*$").unwrap());
+static JUNIPER_MORE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\s*-+\(more.*?\)-+\s*$").unwrap());
 static ANSI_RE: Lazy<Regex> = Lazy::new(|| Regex::new("\x1b\\[[0-9;?]*[A-Za-z]").unwrap());
 
 /// Strip terminal artifacts from a line, or return `None` if it's a
-/// pagination prompt (e.g. "--More--") that should be dropped entirely.
+/// pagination prompt (e.g. "--More--" or "---(more)---") that should be
+/// dropped entirely.
 pub fn clean_line(raw: &str) -> Option<String> {
     let no_ansi = ANSI_RE.replace_all(raw, "");
     let mut out = String::with_capacity(no_ansi.len());
@@ -21,7 +26,7 @@ pub fn clean_line(raw: &str) -> Option<String> {
             _ => out.push(ch),
         }
     }
-    if MORE_RE.is_match(&out) {
+    if MORE_RE.is_match(&out) || JUNIPER_MORE_RE.is_match(&out) {
         None
     } else {
         Some(out)
@@ -50,5 +55,11 @@ mod tests {
     #[test]
     fn drops_more_prompts() {
         assert_eq!(clean_line("  --More--  "), None);
+    }
+
+    #[test]
+    fn drops_juniper_more_prompts() {
+        assert_eq!(clean_line("---(more)---"), None);
+        assert_eq!(clean_line("---(more 27%)---"), None);
     }
 }

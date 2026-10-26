@@ -1,9 +1,10 @@
-//! Recognizing device prompts, the command typed at them, and normalizing
-//! common command abbreviations.
+//! Cisco-style prompts: bare `hostname#`/`hostname>`, IOS-XR's
+//! `RP/.../CPU0:hostname#` variant, and ASA multi-context prompts.
 
 use once_cell::sync::Lazy;
-use pyo3::prelude::*;
 use regex::Regex;
+
+use super::PromptMatch;
 
 /// A device prompt optionally followed by the command typed at it, e.g.
 ///   RP/0/RSP1/CPU0:router#show running-config
@@ -22,16 +23,7 @@ static GENERIC_PROMPT_RE: Lazy<Regex> = Lazy::new(|| {
     .unwrap()
 });
 
-/// A recognized device prompt, with the command (if any) typed at it.
-pub struct PromptMatch {
-    pub hostname: String,
-    pub command: String,
-    /// The original prompt+command line exactly as it appeared in the
-    /// capture, used as a header when writing the command's output file.
-    pub raw: String,
-}
-
-/// Try to match a line as a device prompt.
+/// Try to match a line as a Cisco-style device prompt.
 pub fn match_prompt(line: &str) -> Option<PromptMatch> {
     if let Some(caps) = XR_PROMPT_RE.captures(line) {
         return Some(PromptMatch {
@@ -53,31 +45,6 @@ pub fn match_prompt(line: &str) -> Option<PromptMatch> {
         command,
         raw: line.to_string(),
     })
-}
-
-/// Expand a small set of safe leading-word abbreviations, e.g. "sh run" ->
-/// "show run", so differently-abbreviated invocations of the same command
-/// land in the same output directory.
-#[pyfunction]
-pub fn normalize_command(command: &str) -> String {
-    let trimmed = command.trim();
-    if trimmed.is_empty() {
-        return trimmed.to_string();
-    }
-    let first_end = trimmed.find(char::is_whitespace).unwrap_or(trimmed.len());
-    let first = &trimmed[..first_end];
-    let rest = trimmed[first_end..].trim_start();
-    let expanded = match first.to_lowercase().as_str() {
-        "sh" => "show",
-        "conf" | "config" => "configure",
-        "wr" => "write",
-        _ => first,
-    };
-    if rest.is_empty() {
-        expanded.to_string()
-    } else {
-        format!("{expanded} {rest}")
-    }
 }
 
 #[cfg(test)]
@@ -111,10 +78,7 @@ mod tests {
     }
 
     #[test]
-    fn normalizes_abbreviations() {
-        assert_eq!(normalize_command("sh run"), "show run");
-        assert_eq!(normalize_command("conf t"), "configure t");
-        assert_eq!(normalize_command("wr mem"), "write mem");
-        assert_eq!(normalize_command("show version"), "show version");
+    fn does_not_match_juniper_user_at_host_prompt() {
+        assert!(match_prompt("admin@router1> show configuration").is_none());
     }
 }
