@@ -15,13 +15,13 @@ from .capture import Capture
 
 
 def write_captures(
-    captures: list[Capture], output_dir: Path, flat: bool = False
+    captures: list[Capture], output_dir: Path, flat: bool = True
 ) -> list[Path]:
     """Write captures to disk.
 
-    By default, writes `output_dir/<hostname>/<command>/<yyyy-mm-dd>.txt`. If
-    `flat` is True, writes `output_dir/<hostname>/<command>.txt` instead, with
-    no per-date subfolder.
+    By default, writes `output_dir/<hostname>/<command>.txt` (flat). If
+    `flat` is False, writes `output_dir/<hostname>/<command>/<yyyy-mm-dd>.txt`
+    instead, with a per-date subfolder.
 
     Either way, if the same host/command (and, in dated mode, date) occurs
     more than once, later occurrences get a numeric suffix (`-2`, `-3`, ...)

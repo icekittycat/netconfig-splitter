@@ -5,7 +5,8 @@
 //! for device prompts (to figure out which device/command each block of
 //! output belongs to) and timestamp banners (to figure out which date to
 //! stamp it with), then writes the results out to
-//! `output_dir/<hostname>/<command>/<yyyy-mm-dd>.txt`.
+//! `output_dir/<hostname>/<command>.txt` by default (opt into
+//! `output_dir/<hostname>/<command>/<yyyy-mm-dd>.txt` with `flat=False`).
 
 mod capture;
 mod clean;

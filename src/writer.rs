@@ -1,6 +1,7 @@
 //! Writing finalized captures out to disk, either as
-//! `output_dir/<hostname>/<command>/<yyyy-mm-dd>.txt` (dated, the default) or
-//! `output_dir/<hostname>/<command>.txt` (flat, one file per command).
+//! `output_dir/<hostname>/<command>.txt` (flat, the default, one file per
+//! command) or `output_dir/<hostname>/<command>/<yyyy-mm-dd>.txt` (dated,
+//! opt-in).
 
 // pyo3's #[pyfunction]-generated wrapper re-converts an already-`PyResult`
 // return type, which newer clippy flags as useless; the attribute doesn't
@@ -18,15 +19,15 @@ use crate::paths::sanitize_path_component;
 
 /// Write captures to disk.
 ///
-/// By default, writes `output_dir/<hostname>/<command>/<yyyy-mm-dd>.txt`. If
-/// `flat` is true, writes `output_dir/<hostname>/<command>.txt` instead, with
-/// no per-date subfolder.
+/// By default, writes `output_dir/<hostname>/<command>.txt` (flat). If
+/// `flat` is false, writes `output_dir/<hostname>/<command>/<yyyy-mm-dd>.txt`
+/// instead, with a per-date subfolder.
 ///
 /// Either way, if the same host/command (and, in dated mode, date) occurs
 /// more than once, later occurrences get a numeric suffix (`-2`, `-3`, ...)
 /// so no data is lost.
 #[pyfunction]
-#[pyo3(signature = (captures, output_dir, flat=false))]
+#[pyo3(signature = (captures, output_dir, flat=true))]
 pub fn write_captures(
     captures: Vec<(String, String, String, String)>,
     output_dir: &str,
