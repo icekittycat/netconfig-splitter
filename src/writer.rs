@@ -2,6 +2,11 @@
 //! `output_dir/<hostname>/<command>/<yyyy-mm-dd>.txt` (dated, the default) or
 //! `output_dir/<hostname>/<command>.txt` (flat, one file per command).
 
+// pyo3's #[pyfunction]-generated wrapper re-converts an already-`PyResult`
+// return type, which newer clippy flags as useless; the attribute doesn't
+// reach the generated wrapper if placed on the function itself.
+#![allow(clippy::useless_conversion)]
+
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};

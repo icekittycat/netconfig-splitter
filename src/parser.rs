@@ -1,6 +1,11 @@
 //! The core line-by-line state machine that turns a raw capture file into a
 //! list of per-command `PyCapture`s.
 
+// pyo3's #[pyfunction]-generated wrapper re-converts an already-`PyResult`
+// return type, which newer clippy flags as useless; the attribute doesn't
+// reach the generated wrapper if placed on the function itself.
+#![allow(clippy::useless_conversion)]
+
 use std::collections::HashSet;
 
 use pyo3::exceptions::PyValueError;
