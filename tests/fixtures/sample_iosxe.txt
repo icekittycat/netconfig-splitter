@@ -1,7 +1,7 @@
-switch-xe#terminal length 0
-switch-xe#show clock
+switch-xe# terminal length 0
+switch-xe# show clock
 *02:45:08.742 UTC Mon Oct 19 2026
-switch-xe#show running-config
+switch-xe# show running-config
 Building configuration...
 
 Current configuration : 2048 bytes
@@ -13,6 +13,15 @@ interface GigabitEthernet1/0/1
  switchport mode access
 !
 end
-switch-xe#show version
-Cisco IOS XE Software, Version 17.09.04
+switch-xe# show version
+Cisco IOS XE Software, Version 17.09.04a
+Cisco IOS Software [Cupertino], Catalyst L3 Switch Software (CAT9K_IOSXE), Version 17.9.4a, RELEASE SOFTWARE (fc3)
+Technical Support: http://cisco.com
+Copyright (c) 1986-2024 by Cisco Systems, Inc.
+Compiled Sat 16-Mar-24 02:44 by mcpre
+
+cisco C9300-48UXM (MIPS) processor with 8388608K bytes of memory.
+Processor board ID FDO2405ABCD
+Configuration register is 0x2102
+
 switch-xe#
