@@ -11,15 +11,28 @@ const MONTHS: [&str; 12] = [
 ];
 const WEEKDAYS: &str = "Mon|Tue|Wed|Thu|Fri|Sat|Sun";
 
-/// IOS-XR auto-printed banner after each command, with no year, e.g.
-///   Mon Oct 19 02:45:08.742 UTC
+/// IOS-XR timestamp line, with no year. The exact shape depends on the
+/// device's `service timestamps` configuration, so the weekday and the
+/// trailing timezone/millisecond fields are all optional, e.g.:
+///   Mon Oct 19 02:45:08.742 UTC   (auto-printed command banner)
+///   Oct 27 20:33:15               (service timestamps log datetime)
+///   Oct 27 20:33:15.826 UTC       (... + msec + show-timezone)
+///
+/// Note this does *not* cover `service timestamps log uptime`, which
+/// replaces the date with elapsed router uptime (e.g. "00:05:23:") - there
+/// is no real calendar date to extract from that format, so such lines are
+/// correctly left unmatched and the caller's `fallback_date` is used.
 ///
 /// Not anchored at the start: a queued-command echo can leave stray text
-/// stuck to the front of this line (e.g. "showMon Oct 19 ... UTC"), so we
-/// only require the banner to occupy the *end* of the line.
+/// stuck to the front of this line (e.g. "showMon Oct 19 ... UTC"), and raw
+/// syslog lines are prefixed with a node-id like "RP/0/RSP0/CPU0:" whose
+/// path segments vary by chassis/role - both are tolerated as leading
+/// garbage the same way. We only require the timestamp to occupy the *end*
+/// of the line, so real output lines that merely contain a date-shaped
+/// substring followed by more text (e.g. actual log messages) won't match.
 static XR_DATE_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(&format!(
-        r"(?:{WEEKDAYS})\s+(?P<mon>{months})\s+(?P<day>\d{{1,2}})\s+\d{{2}}:\d{{2}}:\d{{2}}(?:\.\d+)?\s+\S+\s*$",
+        r"(?:(?:{WEEKDAYS})\s+)?(?P<mon>{months})\s+(?P<day>\d{{1,2}})\s+\d{{2}}:\d{{2}}:\d{{2}}(?:\.\d+)?(?:\s+\S+)?\s*$",
         months = MONTHS.join("|"),
     ))
     .unwrap()
@@ -103,5 +116,84 @@ mod tests {
     #[test]
     fn ignores_juniper_timestamp_line() {
         assert!(try_parse_date("Current time: 2026-10-22 14:30:00 UTC", 2026).is_none());
+    }
+
+    #[test]
+    fn parses_bare_datetime_with_no_weekday_or_timezone() {
+        // `service timestamps log datetime` with neither msec nor show-timezone.
+        let parsed = try_parse_date("Oct 27 20:33:15", 2026).unwrap();
+        assert!(!parsed.had_explicit_year());
+        assert_eq!(
+            parsed.date(),
+            CaptureDate {
+                year: 2026,
+                month: 10,
+                day: 27
+            }
+        );
+    }
+
+    #[test]
+    fn parses_datetime_with_msec_and_timezone_but_no_weekday() {
+        // `service timestamps log datetime msec show-timezone`.
+        let parsed = try_parse_date("Oct 27 20:33:15.826 UTC", 2026).unwrap();
+        assert_eq!(
+            parsed.date(),
+            CaptureDate {
+                year: 2026,
+                month: 10,
+                day: 27
+            }
+        );
+    }
+
+    #[test]
+    fn parses_syslog_line_with_node_id_prefix() {
+        // Raw IOS-XR syslog lines prepend the active RP's node id; the
+        // path segment names vary by chassis/role, and the line ends with
+        // a bare colon instead of a timezone when none is configured.
+        let parsed = try_parse_date("RP/0/RSP0/CPU0:Oct 27 20:33:15.826 :", 2026).unwrap();
+        assert_eq!(
+            parsed.date(),
+            CaptureDate {
+                year: 2026,
+                month: 10,
+                day: 27
+            }
+        );
+    }
+
+    #[test]
+    fn parses_syslog_line_with_differently_shaped_node_id() {
+        let parsed = try_parse_date("RP/0/RP0/CPU0:Oct 27 20:33:15 :", 2026).unwrap();
+        assert_eq!(
+            parsed.date(),
+            CaptureDate {
+                year: 2026,
+                month: 10,
+                day: 27
+            }
+        );
+    }
+
+    #[test]
+    fn ignores_uptime_format_with_no_real_date() {
+        // `service timestamps log uptime` replaces the date entirely with
+        // elapsed router uptime - there's no calendar date to recover here,
+        // so this must fall back to the caller's fallback_date instead.
+        assert!(try_parse_date("00:05:23: %SYS-5-CONFIG_I: Configured from console", 2026).is_none());
+    }
+
+    #[test]
+    fn ignores_syslog_line_with_trailing_message_text() {
+        // try_parse_date recognizes whole-line date *banners*, not a date
+        // prefix embedded in an arbitrary longer line - a real syslog
+        // message following the timestamp must not be swallowed as if the
+        // whole line were just a banner.
+        assert!(try_parse_date(
+            "RP/0/RSP0/CPU0:Oct 27 20:33:15.826 : %SYS-5-CONFIG_I: Configured from console",
+            2026
+        )
+        .is_none());
     }
 }
