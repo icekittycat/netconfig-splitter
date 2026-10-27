@@ -17,7 +17,9 @@ class TestIosXr:
             # Reflects the date current *before* this capture's own banner is
             # parsed (same convention as NX-OS's "show clock", see below).
             ("router-xr", "admin show led", date(2026, 10, 19)),
-            ("router-xr", "show redundancy", date(2026, 10, 19)),
+            # Picks up the date from "admin show led"'s own banner (Oct 28),
+            # parsed before this prompt was reached.
+            ("router-xr", "show redundancy", date(2026, 10, 28)),
         ]
         assert "hostname router-xr" in captures[0].text
         assert "interface MgmtEth0/RSP1/CPU0/0" in captures[0].text
@@ -71,6 +73,7 @@ class TestIosXr:
         # shape) rather than real output, so they're dropped too.
         assert "show interface Loopback0" not in running_config.text
         assert "show inventory" not in running_config.text
+        assert running_config.text == (FIXTURES / "sample_iosxr_running_config_expected.txt").read_text()
 
         # Parsing continues correctly after the garbage: both real captures
         # that follow it are intact.
