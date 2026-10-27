@@ -14,6 +14,7 @@ class TestIosXr:
         assert [(c.hostname, c.command, c.date) for c in captures] == [
             ("router-xr", "show running-config", date(2026, 10, 19)),
             ("router-xr", "show version", date(2026, 10, 19)),
+            ("router-xr", "show redundancy", date(2026, 10, 19)),
         ]
         assert "hostname router-xr" in captures[0].text
         assert "interface MgmtEth0/RSP1/CPU0/0" in captures[0].text
@@ -27,6 +28,38 @@ class TestIosXr:
         # "terminal length 0" has no output of its own (just a blank line before
         # the auto-printed XR banner), so it shouldn't produce a capture.
         assert "terminal length 0" not in {c.command for c in captures}
+
+    def test_tolerates_interleaved_garbage(self):
+        # Scripted capture tools can queue up a batch of commands before
+        # reading any output back, so the terminal echoes some of them with
+        # no prompt of their own, sometimes smashed together with an
+        # unrelated auto-printed date banner (e.g. a leftover tail fragment
+        # of "show running-config" stuck to the front of a timestamp line).
+        text = (FIXTURES / "sample_iosxr.txt").read_text()
+        captures = parse(text, default_year=2026)
+        by_command = {c.command: c for c in captures}
+
+        running_config = by_command["show running-config"]
+        # The smashed-together fragment+timestamp lines are recognized as
+        # date banners (unanchored match) and don't leak into the body.
+        assert "Mon Oct 19 03:54:34" not in running_config.text
+        assert "Mon Oct 19 03:54:35" not in running_config.text
+        # "show redundancy" is typed at a real prompt later in the file, so
+        # the pre-scan recognizes this bare echo and drops it - it must not
+        # leak into "show running-config"'s body nor start its own capture.
+        assert "show redundancy" not in running_config.text
+        # Genuinely orphaned echoes with no real prompt anywhere in the file
+        # can't be distinguished from real output, so they're tolerated as
+        # best-effort noise rather than causing a crash or corrupting the
+        # capture that follows.
+        assert "show interface Loopback0" in running_config.text
+        assert "show inventory" in running_config.text
+
+        # Parsing continues correctly after the garbage: both real captures
+        # that follow it are intact.
+        assert by_command["show version"].hostname == "router-xr"
+        assert by_command["show redundancy"].hostname == "router-xr"
+        assert "ACTIVE role" in by_command["show redundancy"].text
 
 
 class TestIos:

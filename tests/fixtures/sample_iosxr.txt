@@ -12,9 +12,19 @@ interface MgmtEth0/RSP1/CPU0/0
  ipv4 address 10.0.0.1 255.255.255.0
 !
 end
+nning-confMon Oct 19 03:54:34.769 UTC
+show interface Loopback0
+show inventory
+show redundancy
+show ethernet Mon Oct 19 03:54:35.617 UTC
 
 RP/0/RSP1/CPU0:router-xr#show version 
 Cisco IOS XR Software, Version 7.3.2
 Copyright (c) 2021 by Cisco Systems, Inc.
+
+RP/0/RSP1/CPU0:router-xr#show redundancy
+Redundancy information for node 0/RSP1/CPU0:
+Node 0/RSP1/CPU0 is in ACTIVE role
+Node 0/RSP0/CPU0 is in STANDBY role
 
 RP/0/RSP1/CPU0:router-xr#
