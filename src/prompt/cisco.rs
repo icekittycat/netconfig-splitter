@@ -66,6 +66,13 @@ mod tests {
     }
 
     #[test]
+    fn matches_generic_prompt_with_space_before_command() {
+        let m = match_prompt("switch1# show version").unwrap();
+        assert_eq!(m.hostname, "switch1");
+        assert_eq!(m.command, "show version");
+    }
+
+    #[test]
     fn matches_asa_multi_context_prompt() {
         let m = match_prompt("ciscoasa/admin#show running-config").unwrap();
         assert_eq!(m.hostname, "ciscoasa/admin");

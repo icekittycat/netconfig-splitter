@@ -63,6 +63,53 @@ class TestNxos:
         assert "interface Ethernet1/1" in running_config.text
 
 
+class TestIosXe:
+    def test_uses_show_clock_date(self):
+        text = (FIXTURES / "sample_iosxe.txt").read_text()
+        captures = parse(text)
+
+        by_command = {c.command: c for c in captures}
+        assert by_command["show running-config"].date == date(2026, 10, 19)
+        assert "hostname switch-xe" in by_command["show running-config"].text
+        assert by_command["show version"].hostname == "switch-xe"
+        assert "IOS XE Software" in by_command["show version"].text
+
+
+class TestAsa:
+    def test_splits_correctly(self):
+        text = (FIXTURES / "sample_asa.txt").read_text()
+        captures = parse(text)
+
+        by_command = {c.command: c for c in captures}
+        assert set(by_command) == {"show clock", "show running-config", "show version"}
+
+        running_config = by_command["show running-config"]
+        # ASA multi-context prompts fold the context into the hostname.
+        assert running_config.hostname == "ciscoasa/admin"
+        assert running_config.date == date(2026, 10, 19)
+        assert "nameif outside" in running_config.text
+
+
+class TestJuniper:
+    def test_splits_correctly_with_fallback_date(self):
+        text = (FIXTURES / "sample_juniper.txt").read_text()
+        # JunOS banners aren't date-parsed (see date/mod.rs), so every
+        # capture takes the caller's fallback_date.
+        captures = parse(text, fallback_date=date(2026, 10, 19))
+
+        by_command = {c.command: c for c in captures}
+        assert set(by_command) == {"show configuration", "show version"}
+
+        config = by_command["show configuration"]
+        assert config.hostname == "router1"
+        assert config.date == date(2026, 10, 19)
+        assert "host-name router1;" in config.text
+
+        version = by_command["show version"]
+        assert version.hostname == "router1"
+        assert "Junos: 21.4R1.12" in version.text
+
+
 class TestGenericPromptEdgeCases:
     def test_ignores_banner_like_lines_in_output(self):
         text = "\n".join(
