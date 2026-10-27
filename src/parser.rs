@@ -76,6 +76,17 @@ impl<'a> Parser<'a> {
             return;
         }
 
+        // A queued command can also be echoed with no real prompt of its own
+        // *and* never be typed at a real prompt anywhere else in the file
+        // (e.g. "show interface Loopback0" queued but never actually run),
+        // so it can't be caught by `known_commands` above. Real device
+        // output never takes the shape of a bare "show ..." query, so any
+        // such line appearing mid-capture is still an echoed command, not
+        // output content.
+        if looks_like_echoed_command(&line) {
+            return;
+        }
+
         if let Some(p) = self.pending.as_mut() {
             // Drop blank lines between the prompt header and the first real
             // content line, so there's no gap before the banner/output.
@@ -177,6 +188,18 @@ fn is_stray_command_fragment(line: &str, known_commands: &HashSet<String>) -> bo
         return false;
     }
     known_commands.iter().any(|cmd| cmd.ends_with(trimmed) && cmd != trimmed)
+}
+
+/// Whether `line` is a bare "show ..." query, the universal cross-vendor
+/// shape of a typed-but-never-answered CLI command (see
+/// `Parser::feed_line`). Deliberately narrow (letters/digits/spaces/`/`/`-`/
+/// `.` only) so it can't misfire on real output such as banner or config
+/// text that happens to mention the word "show".
+fn looks_like_echoed_command(line: &str) -> bool {
+    let Some(rest) = line.trim().strip_prefix("show ") else {
+        return false;
+    };
+    !rest.is_empty() && rest.chars().all(|c| c.is_alphanumeric() || matches!(c, ' ' | '/' | '-' | '.'))
 }
 
 /// Parse a raw capture file into a list of per-command captures.

@@ -48,12 +48,13 @@ class TestIosXr:
         # the pre-scan recognizes this bare echo and drops it - it must not
         # leak into "show running-config"'s body nor start its own capture.
         assert "show redundancy" not in running_config.text
-        # Genuinely orphaned echoes with no real prompt anywhere in the file
-        # can't be distinguished from real output, so they're tolerated as
-        # best-effort noise rather than causing a crash or corrupting the
-        # capture that follows.
-        assert "show interface Loopback0" in running_config.text
-        assert "show inventory" in running_config.text
+        # "show interface Loopback0"/"show inventory" are never typed at a
+        # real prompt anywhere in the file, but they're still recognized as
+        # bare "show ..." queries (the universal cross-vendor command
+        # shape) rather than real output, so they're dropped too.
+        assert "show interface Loopback0" not in running_config.text
+        assert "show inventory" not in running_config.text
+        assert running_config.text == (FIXTURES / "sample_iosxr_running_config_expected.txt").read_text()
 
         # Parsing continues correctly after the garbage: both real captures
         # that follow it are intact.

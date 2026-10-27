@@ -1,0 +1,10 @@
+RP/0/RSP1/CPU0:router-xr#show running-config 
+Building configuration...
+!! IOS XR Configuration 7.3.2
+!
+hostname router-xr
+!
+interface MgmtEth0/RSP1/CPU0/0
+ ipv4 address 10.0.0.1 255.255.255.0
+!
+end
