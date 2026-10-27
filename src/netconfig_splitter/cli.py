@@ -30,6 +30,19 @@ def main(argv: list[str] | None = None) -> int:
             "output/<hostname>/<command>/<yyyy-mm-dd>.txt"
         ),
     )
+    vendor_group = parser.add_mutually_exclusive_group()
+    vendor_group.add_argument(
+        "--vendor", choices=["cisco", "juniper"],
+        help="Restrict prompt recognition to one vendor (default: try all known vendors)",
+    )
+    vendor_group.add_argument(
+        "--prompt-regex",
+        help=(
+            "Match prompts with a custom regex instead of any built-in vendor "
+            "pattern, for syntaxes not yet supported. Must have a named group "
+            "'host'; a 'cmd' group is optional."
+        ),
+    )
     args = parser.parse_args(argv)
 
     total_written = 0
@@ -39,7 +52,11 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
         text = input_path.read_text(encoding="utf-8", errors="replace")
-        captures = parse(text)
+        try:
+            captures = parse(text, vendor=args.vendor, prompt_regex=args.prompt_regex)
+        except ValueError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 1
 
         if not captures:
             print(f"{input_path}: no device prompts/commands recognized", file=sys.stderr)

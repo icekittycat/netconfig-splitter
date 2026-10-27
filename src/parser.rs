@@ -9,13 +9,14 @@ use pyo3::prelude::*;
 use crate::capture::{Pending, PyCapture};
 use crate::clean::clean_line;
 use crate::date::{try_parse_date, CaptureDate, ParsedDate};
-use crate::prompt::{match_prompt, normalize_command, PromptMatch};
+use crate::prompt::{normalize_command, PromptMatch, PromptStrategy};
 
 /// Walks a capture file line by line, tracking the current device/date
 /// context and accumulating output into finished `PyCapture`s.
-struct Parser {
+struct Parser<'a> {
     year_hint: i32,
     normalize_commands: bool,
+    prompt_strategy: &'a PromptStrategy,
     known_commands: HashSet<String>,
     current_date: CaptureDate,
     last_month: Option<u32>,
@@ -23,16 +24,18 @@ struct Parser {
     captures: Vec<PyCapture>,
 }
 
-impl Parser {
+impl<'a> Parser<'a> {
     fn new(
         default_year: i32,
         fallback_date: CaptureDate,
         normalize_commands: bool,
+        prompt_strategy: &'a PromptStrategy,
         known_commands: HashSet<String>,
     ) -> Self {
         Self {
             year_hint: default_year,
             normalize_commands,
+            prompt_strategy,
             known_commands,
             current_date: fallback_date,
             last_month: None,
@@ -51,7 +54,7 @@ impl Parser {
             return;
         }
 
-        if let Some(prompt) = match_prompt(&line) {
+        if let Some(prompt) = self.prompt_strategy.match_prompt(&line) {
             self.handle_prompt(prompt);
             return;
         }
@@ -146,13 +149,13 @@ impl Parser {
 /// Pre-scan the capture file for every command actually typed at a device
 /// prompt, so stray queued-command echoes (see `Parser::feed_line`) can be
 /// recognized regardless of where in the file they show up.
-fn collect_known_commands(text: &str) -> HashSet<String> {
+fn collect_known_commands(text: &str, prompt_strategy: &PromptStrategy) -> HashSet<String> {
     let mut commands: HashSet<String> = HashSet::new();
     for raw_line in text.lines() {
         let Some(line) = clean_line(raw_line) else {
             continue;
         };
-        if let Some(prompt) = match_prompt(&line) {
+        if let Some(prompt) = prompt_strategy.match_prompt(&line) {
             if !prompt.command.is_empty() {
                 commands.insert(prompt.command);
             }
@@ -177,19 +180,27 @@ fn is_stray_command_fragment(line: &str, known_commands: &HashSet<String>) -> bo
 }
 
 /// Parse a raw capture file into a list of per-command captures.
+///
+/// `vendor` restricts prompt recognition to one known vendor ("cisco" or
+/// "juniper"), skipping the others. `prompt_regex` matches a fully
+/// caller-supplied pattern instead (must have a named group `host`; `cmd`
+/// is optional). At most one of `vendor`/`prompt_regex` may be given.
 #[pyfunction]
-#[pyo3(signature = (text, default_year, fallback_date, normalize_commands=true))]
+#[pyo3(signature = (text, default_year, fallback_date, normalize_commands=true, vendor=None, prompt_regex=None))]
 pub fn parse(
     text: &str,
     default_year: i32,
     fallback_date: &str,
     normalize_commands: bool,
+    vendor: Option<&str>,
+    prompt_regex: Option<&str>,
 ) -> PyResult<Vec<PyCapture>> {
     let fallback = CaptureDate::from_iso(fallback_date)
         .ok_or_else(|| PyValueError::new_err(format!("invalid fallback_date: {fallback_date}")))?;
+    let prompt_strategy = PromptStrategy::from_options(vendor, prompt_regex).map_err(PyValueError::new_err)?;
 
-    let known_commands = collect_known_commands(text);
-    let mut parser = Parser::new(default_year, fallback, normalize_commands, known_commands);
+    let known_commands = collect_known_commands(text, &prompt_strategy);
+    let mut parser = Parser::new(default_year, fallback, normalize_commands, &prompt_strategy, known_commands);
     for raw_line in text.lines() {
         parser.feed_line(raw_line);
     }
