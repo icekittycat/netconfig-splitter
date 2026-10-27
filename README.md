@@ -39,15 +39,17 @@ Or simply `make develop` (uses `uv` under the hood — see [Makefile](Makefile))
 netconfig-splitter capture1.txt capture2.txt -o output
 ```
 
-Writes `output/<hostname>/<command>/<yyyy-mm-dd>.txt` by default. If the same
-host/command/date combination occurs more than once, later occurrences get a
+Writes `output/<hostname>/<command>.txt` by default. If the same
+host/command combination occurs more than once, later occurrences get a
 numeric suffix (`-2`, `-3`, ...) so no data is lost.
 
 Options:
 
 - `-o, --output`: output directory (default: `./output`)
-- `--flat`: write `output/<hostname>/<command>.txt` instead, with no per-date
-  subfolder (collisions still get a numeric suffix)
+- `--format {flat,dated}`: `flat` (default) writes
+  `output/<hostname>/<command>.txt`; `dated` writes
+  `output/<hostname>/<command>/<yyyy-mm-dd>.txt` instead, one subfolder per
+  capture date (collisions still get a numeric suffix)
 - `--vendor {cisco,juniper}`: restrict prompt recognition to one vendor
   instead of trying all known vendors (useful if a capture happens to
   contain a prompt-like line that's ambiguous across vendors)

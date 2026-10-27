@@ -15,7 +15,7 @@ def main(argv: list[str] | None = None) -> int:
         prog="netconfig-splitter",
         description=(
             "Split combined IOS/IOS-XE/IOS-XR/NX-OS CLI capture files into "
-            "output/<hostname>/<command>/<yyyy-mm-dd>.txt"
+            "output/<hostname>/<command>.txt"
         ),
     )
     parser.add_argument("inputs", nargs="+", type=Path, help="Capture file(s) to split")
@@ -24,10 +24,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Output directory (default: ./output)",
     )
     parser.add_argument(
-        "--flat", action="store_true",
+        "--format", choices=["flat", "dated"], default="flat",
         help=(
-            "Write output/<hostname>/<command>.txt instead of the default "
-            "output/<hostname>/<command>/<yyyy-mm-dd>.txt"
+            "'flat' (default) writes output/<hostname>/<command>.txt; "
+            "'dated' writes output/<hostname>/<command>/<yyyy-mm-dd>.txt, "
+            "one subfolder per capture date"
         ),
     )
     vendor_group = parser.add_mutually_exclusive_group()
@@ -62,7 +63,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{input_path}: no device prompts/commands recognized", file=sys.stderr)
             continue
 
-        written = write_captures(captures, args.output, flat=args.flat)
+        written = write_captures(captures, args.output, flat=args.format == "flat")
         for path in written:
             print(path)
         total_written += len(written)
