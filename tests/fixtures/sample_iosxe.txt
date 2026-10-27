@@ -1,0 +1,18 @@
+switch-xe#terminal length 0
+switch-xe#show clock
+*02:45:08.742 UTC Mon Oct 19 2026
+switch-xe#show running-config
+Building configuration...
+
+Current configuration : 2048 bytes
+!
+version 17.9
+hostname switch-xe
+!
+interface GigabitEthernet1/0/1
+ switchport mode access
+!
+end
+switch-xe#show version
+Cisco IOS XE Software, Version 17.09.04
+switch-xe#

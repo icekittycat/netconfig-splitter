@@ -1,0 +1,17 @@
+admin@router1> show configuration
+## Last changed: 2026-10-19 02:45:08 UTC
+system {
+    host-name router1;
+}
+interfaces {
+    ge-0/0/0 {
+        unit 0;
+    }
+}
+
+admin@router1> show version
+Hostname: router1
+Model: mx204
+Junos: 21.4R1.12
+
+admin@router1>
