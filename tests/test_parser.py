@@ -17,6 +17,9 @@ class TestIosXr:
             # Reflects the date current *before* this capture's own banner is
             # parsed (same convention as NX-OS's "show clock", see below).
             ("router-xr", "admin show led", date(2026, 10, 19)),
+            # Picks up the date from "admin show led"'s own banner (Oct 28),
+            # parsed before this prompt was reached.
+            ("router-xr", "show redundancy", date(2026, 10, 28)),
         ]
         assert "hostname router-xr" in captures[0].text
         assert "interface MgmtEth0/RSP1/CPU0/0" in captures[0].text
@@ -44,6 +47,39 @@ class TestIosXr:
         assert led.text.count("admin show led") == 1  # only the header line
         assert "=============================================================" in led.text
         assert "Location  LED Name" in led.text
+
+    def test_tolerates_interleaved_garbage(self):
+        # Scripted capture tools can queue up a batch of commands before
+        # reading any output back, so the terminal echoes some of them with
+        # no prompt of their own, sometimes smashed together with an
+        # unrelated auto-printed date banner (e.g. a leftover tail fragment
+        # of "show running-config" stuck to the front of a timestamp line).
+        text = (FIXTURES / "sample_iosxr.txt").read_text()
+        captures = parse(text, default_year=2026)
+        by_command = {c.command: c for c in captures}
+
+        running_config = by_command["show running-config"]
+        # The smashed-together fragment+timestamp lines are recognized as
+        # date banners (unanchored match) and don't leak into the body.
+        assert "Mon Oct 19 03:54:34" not in running_config.text
+        assert "Mon Oct 19 03:54:35" not in running_config.text
+        # "show redundancy" is typed at a real prompt later in the file, so
+        # the pre-scan recognizes this bare echo and drops it - it must not
+        # leak into "show running-config"'s body nor start its own capture.
+        assert "show redundancy" not in running_config.text
+        # "show interface Loopback0"/"show inventory" are never typed at a
+        # real prompt anywhere in the file, but they're still recognized as
+        # bare "show ..." queries (the universal cross-vendor command
+        # shape) rather than real output, so they're dropped too.
+        assert "show interface Loopback0" not in running_config.text
+        assert "show inventory" not in running_config.text
+        assert running_config.text == (FIXTURES / "sample_iosxr_running_config_expected.txt").read_text()
+
+        # Parsing continues correctly after the garbage: both real captures
+        # that follow it are intact.
+        assert by_command["show version"].hostname == "router-xr"
+        assert by_command["show redundancy"].hostname == "router-xr"
+        assert "ACTIVE role" in by_command["show redundancy"].text
 
 
 class TestIos:
