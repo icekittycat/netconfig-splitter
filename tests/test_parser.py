@@ -14,6 +14,9 @@ class TestIosXr:
         assert [(c.hostname, c.command, c.date) for c in captures] == [
             ("router-xr", "show running-config", date(2026, 10, 19)),
             ("router-xr", "show version", date(2026, 10, 19)),
+            # Reflects the date current *before* this capture's own banner is
+            # parsed (same convention as NX-OS's "show clock", see below).
+            ("router-xr", "admin show led", date(2026, 10, 19)),
         ]
         assert "hostname router-xr" in captures[0].text
         assert "interface MgmtEth0/RSP1/CPU0/0" in captures[0].text
@@ -27,6 +30,20 @@ class TestIosXr:
         # "terminal length 0" has no output of its own (just a blank line before
         # the auto-printed XR banner), so it shouldn't produce a capture.
         assert "terminal length 0" not in {c.command for c in captures}
+
+    def test_strips_leading_command_echo_glued_to_output(self):
+        # "admin show led" echoes its own command text a second time, glued
+        # directly onto the front of its real first output line with no
+        # newline in between - that echo must not leak into the output.
+        text = (FIXTURES / "sample_iosxr.txt").read_text()
+        captures = parse(text, default_year=2026)
+        by_command = {c.command: c for c in captures}
+
+        led = by_command["admin show led"]
+        assert "admin show led=====" not in led.text
+        assert led.text.count("admin show led") == 1  # only the header line
+        assert "=============================================================" in led.text
+        assert "Location  LED Name" in led.text
 
 
 class TestIos:

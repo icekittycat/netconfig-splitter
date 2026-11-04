@@ -17,4 +17,15 @@ RP/0/RSP1/CPU0:router-xr#show version
 Cisco IOS XR Software, Version 7.3.2
 Copyright (c) 2021 by Cisco Systems, Inc.
 
+RP/0/RSP1/CPU0:router-xr#admin show led
+Wed Oct 28 02:52:42.869 UTC
+admin show led=============================================================
+Location  LED Name                      Mode         Color  
+=============================================================
+0/0        
+          0/0-Status LED                WORKING     GREEN     
+0/RSP0        
+          0/RSP0-Fail LED               WORKING     OFF       
+          0/RSP0-Alarm Minor LED        WORKING     OFF       
+
 RP/0/RSP1/CPU0:router-xr#
