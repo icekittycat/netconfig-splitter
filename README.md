@@ -1,5 +1,7 @@
 # netconfig-splitter
 
+[![CI](https://github.com/icekittycat/netconfig-splitter/actions/workflows/ci.yml/badge.svg)](https://github.com/icekittycat/netconfig-splitter/actions/workflows/ci.yml)
+
 Split combined IOS / IOS-XE / IOS-XR / NX-OS / ASA CLI capture files into
 per-host, per-command output files.
 
