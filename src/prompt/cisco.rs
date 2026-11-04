@@ -15,10 +15,13 @@ static XR_PROMPT_RE: Lazy<Regex> =
 /// multi-context suffix ("/context") and/or a config-mode suffix such as
 /// "(config)" or "(config-if)". Anchored at the start of the line, so this
 /// only matches a prompt that begins the line (not one embedded mid-output,
-/// e.g. inside a banner or ACL remark).
+/// e.g. inside a banner or ACL remark). The hostname requires 2+ characters -
+/// real device hostnames are never a single letter, but single-letter BGP
+/// table status codes (e.g. "s>i10.0.0.0/24 ..." for a stale, IGP-origin
+/// route) would otherwise false-positive as a 1-character hostname prompt.
 static GENERIC_PROMPT_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
-        r"^(?P<host>[A-Za-z0-9_.\-]{1,63})(?:/(?P<context>[A-Za-z0-9_.\-]{1,32}))?(?:\([^)]{0,40}\))?(?P<delim>[#>])\s*(?P<cmd>.*)$",
+        r"^(?P<host>[A-Za-z0-9_.\-]{2,63})(?:/(?P<context>[A-Za-z0-9_.\-]{1,32}))?(?:\([^)]{0,40}\))?(?P<delim>[#>])\s*(?P<cmd>.*)$",
     )
     .unwrap()
 });
@@ -87,5 +90,12 @@ mod tests {
     #[test]
     fn does_not_match_juniper_user_at_host_prompt() {
         assert!(match_prompt("admin@router1> show configuration").is_none());
+    }
+
+    #[test]
+    fn does_not_match_bgp_table_status_codes() {
+        // "s>i" is a stale, IGP-origin BGP route, not a 1-character
+        // hostname "s" followed by a ">" prompt.
+        assert!(match_prompt("s>i192.168.21.40/32   192.168.3.219            0    100      0 ?").is_none());
     }
 }
