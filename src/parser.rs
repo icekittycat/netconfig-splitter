@@ -87,6 +87,20 @@ impl<'a> Parser<'a> {
             if p.lines.is_empty() && line.trim().is_empty() {
                 return;
             }
+
+            // Some commands (e.g. IOS-XR's "admin show led") echo their own
+            // command text a second time, glued directly onto the front of
+            // the real first output line with no newline in between. Strip
+            // that leading echo so the real content survives intact.
+            let line = if p.lines.is_empty() {
+                line.strip_prefix(p.command.as_str())
+                    .filter(|rest| !rest.is_empty())
+                    .map(str::to_string)
+                    .unwrap_or(line)
+            } else {
+                line
+            };
+
             p.lines.push(line);
         }
     }
