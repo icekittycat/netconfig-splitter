@@ -23,6 +23,10 @@ struct Parser<'a> {
     normalize_commands: bool,
     prompt_strategy: &'a PromptStrategy,
     known_commands: HashSet<String>,
+    // Every proper suffix (>= MIN_FRAGMENT_LEN chars) of every known command,
+    // precomputed once so `is_stray_command_fragment` is an O(1) lookup per
+    // line instead of an O(known_commands) scan - see `command_fragment_suffixes`.
+    fragment_suffixes: HashSet<String>,
     current_date: CaptureDate,
     last_month: Option<u32>,
     pending: Option<Pending>,
@@ -37,11 +41,13 @@ impl<'a> Parser<'a> {
         prompt_strategy: &'a PromptStrategy,
         known_commands: HashSet<String>,
     ) -> Self {
+        let fragment_suffixes = command_fragment_suffixes(&known_commands);
         Self {
             year_hint: default_year,
             normalize_commands,
             prompt_strategy,
             known_commands,
+            fragment_suffixes,
             current_date: fallback_date,
             last_month: None,
             pending: None,
@@ -77,7 +83,7 @@ impl<'a> Parser<'a> {
         // command visible (e.g. "faces status" left over from "show ethernet
         // cfm interfaces status"), when a later overwrite erases the front of
         // the echoed text. Drop lines that are clearly just such a fragment.
-        if is_stray_command_fragment(&line, &self.known_commands) {
+        if is_stray_command_fragment(&line, &self.fragment_suffixes) {
             return;
         }
 
@@ -198,15 +204,33 @@ fn collect_known_commands(text: &str, prompt_strategy: &PromptStrategy) -> HashS
 /// fragment of a known command, rather than genuine (if short) output.
 const MIN_FRAGMENT_LEN: usize = 6;
 
+/// Precompute every proper suffix (>= MIN_FRAGMENT_LEN chars) of every known
+/// command, so `is_stray_command_fragment` can do an O(1) lookup per line
+/// instead of scanning every known command for every output line - the
+/// latter is O(lines * known_commands), which gets slow on large combined
+/// captures with hundreds of commands and millions of output lines.
+fn command_fragment_suffixes(known_commands: &HashSet<String>) -> HashSet<String> {
+    let mut suffixes = HashSet::new();
+    for cmd in known_commands {
+        let chars: Vec<char> = cmd.chars().collect();
+        for start in 1..chars.len() {
+            if chars.len() - start >= MIN_FRAGMENT_LEN {
+                suffixes.insert(chars[start..].iter().collect());
+            }
+        }
+    }
+    suffixes
+}
+
 /// Whether `line` looks like the tail end of a known command left behind by
 /// a queued-echo overwrite artifact (see `Parser::feed_line`), e.g. "faces
 /// status" surviving from "show ethernet cfm interfaces status".
-fn is_stray_command_fragment(line: &str, known_commands: &HashSet<String>) -> bool {
+fn is_stray_command_fragment(line: &str, fragment_suffixes: &HashSet<String>) -> bool {
     let trimmed = line.trim();
     if trimmed.chars().count() < MIN_FRAGMENT_LEN {
         return false;
     }
-    known_commands.iter().any(|cmd| cmd.ends_with(trimmed) && cmd != trimmed)
+    fragment_suffixes.contains(trimmed)
 }
 
 /// Whether `line` is a bare "show ..." query, the universal cross-vendor
