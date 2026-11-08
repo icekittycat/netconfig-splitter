@@ -30,10 +30,14 @@ module layout and is a thin, stable wrapper around it for the CLI and tests.
 ```sh
 uv venv
 uv pip install maturin pytest
-maturin develop  # builds the Rust extension and installs the package in-place
+maturin develop --release  # builds the Rust extension (optimized) and installs the package in-place
 ```
 
-Or simply `make develop` (uses `uv` under the hood — see [Makefile](Makefile)).
+Or simply `make release` (uses `uv` under the hood — see [Makefile](Makefile)).
+A plain `maturin develop`/`make develop` builds in debug mode instead, which
+is fine for quickly running the test suite but measured ~10x slower on
+multi-million-line real-world capture files - use `--release` for actually
+splitting large captures.
 
 ## Usage
 
@@ -93,7 +97,8 @@ unrecognized and the parser falls back to `fallback_date` instead.
 ## Development
 
 ```sh
-make develop   # build the Rust extension and install it into .venv
+make develop   # build the Rust extension (debug) and install it into .venv
+make release   # build the Rust extension (optimized) and install it into .venv
 make test      # build, then run both `cargo test` and `pytest`
 make fmt       # cargo fmt
 make lint      # cargo clippy
